@@ -1,0 +1,56 @@
+# This file contains metadata for your plugin.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=VectorToDBLoader
+qgisMinimumVersion=3.28
+description=Loads Vector Themes to Databases
+version=0.1
+author=Roger Merritt / Spatial Tapestry
+email=SpatialTapesry@gmail.com
+
+about=see "VectorThemes2Databases.html" in this folder.
+
+This plugin takes 'Active' Vector Themes from the QGIS Legend and loads them to either:
+PostGres/PostGIS
+Oracle Spatial
+MSSQL
+
+
+tracker=email=roger@SpatialTapesry.com.au
+repository=https://github.com/DrRogerM/Vector-to-Database (private at this stage)
+
+PS All source code is provided!!!
+
+# End of mandatory metadata
+
+# Recommended items:
+
+hasProcessingProvider=no
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=python, vector, postGIS, Oracle, MS SQL
+
+homepage=http://na
+category=Vector
+icon=icon.png
+# experimental flag
+experimental=True
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
+# Since QGIS 3.8, a comma separated list of plugins to be installed
+# (or upgraded) can be specified.
+# Check the documentation for more information.
+# plugin_dependencies=psycopg2,oracledb,pyodbc,{Devart ODBC Driver for Oracle},{Devart ODBC Driver for SQL Server}
+
+Category of the plugin: Raster, Vector, Database or Web
+# category=Vector, Database
+
+# If the plugin can run on QGIS Server.
+server=False
+
