@@ -18,8 +18,8 @@ Oracle Spatial
 MSSQL
 
 
-tracker=email=roger@SpatialTapesry.com.au
-repository=https://github.com/DrRogerM/Vector-to-Database (private at this stage)
+tracker=https://github.com/SpatialTapestry/QGIS-Plugin---Vector-Themes-to-DB/issues
+repository=https://github.com/SpatialTapestry/QGIS-Plugin---Vector-Themes-to-DB
 
 PS All source code is provided!!!
 
