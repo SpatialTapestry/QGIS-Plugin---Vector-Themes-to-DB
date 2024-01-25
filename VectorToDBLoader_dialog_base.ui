@@ -271,7 +271,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>See VectorThemes2Databases.html to for full support.</string>
+     <string>See VectorThemes2Databases.html for full support.</string>
     </property>
    </widget>
   </widget>
@@ -447,7 +447,7 @@ Connection,
     </rect>
    </property>
    <property name="text">
-    <string>Delete the QGIS Selected Themes to File</string>
+    <string>Delete the QGIS Selected Themes from File</string>
    </property>
   </widget>
  </widget>

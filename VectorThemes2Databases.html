@@ -11,9 +11,9 @@
     <p style="text-align: left;"><br>
     </p>
     <p>QGIS has builtin tools to take Vector themes and save them out to
-      Shape/TAB Files and GeoPackages, but seems to be lacking tools in the GUI
-      to bulk process Vector Themes into databases like Postgres, Oracle and MS
-      SQL Server.</p>
+      Shape/TAB Files, GeoPackages, etc, but seems to be lacking tools in the
+      GUI to bulk process Vector Themes into databases like Postgres, Oracle and
+      MS SQL Server.</p>
     <p>This plugin seeks to address that need and to be a building stone for
       other tools from the author.</p>
     <div style="text-align: center;"><img src="Vector2DB.png" alt="Vector2DB" title="Vector2DB"></div>
@@ -28,8 +28,8 @@
     <div style="text-align: left;">&nbsp;&nbsp;&nbsp; 3/&nbsp;&nbsp;&nbsp; the
       SRID/EPSG that the themes will be stored in</div>
     <div style="text-align: left;">&nbsp;&nbsp;&nbsp; 4/&nbsp;&nbsp;&nbsp; the
-      database connectors have been installed, see Installation Instructions
-      below.</div>
+      database connectors have been installed, see <em><strong>Installation
+          Instructions</strong></em> below.</div>
     <div style="text-align: left;"><br>
     </div>
     <div style="text-align: left;">
@@ -51,8 +51,7 @@
     <div style="text-align: left;">
       <h2>User Instructions:</h2>
       <p>Select the database where the data is to be stored. Note that Oracle is
-        supported via both the 'oracledb' and 'Devart' connectors as the author
-        had difficulty getting 'oracledb' to run in some configurations.</p>
+        supported via both the 'oracledb' and 'Devart' connectors.</p>
       <p>Enter the database connection parameters and the SRID. The SQL can be
         written to a local file, in the user's home directory on both Windows
         and Linux, if that is wanted then check the 'Write SQL to (ASCII) File'
@@ -92,25 +91,135 @@
         sorted, so basically if DBeaver and other tools cannot connect then
         neither can this Plugin.</p>
       <h2>Installation Instructions:</h2>
-      <p>QGIS 3.28 is recommended, and Python 3.12 is the version this code has
-        been developed on.</p>
+      <p>QGIS 3.28 is recommended. Do not install Python, instead we will use
+        the Python installed with QGIS. (Installing Python 3.12 on Windows
+        causes problems)</p>
       <p>All 3 database connectors must be installed otherwise to code will
         return errors. Alternatively the Python Source code can be modified to
         remove references to any unwanted connectors.</p>
+      <h3>Ubuntu<br>
+      </h3>
       <p>pip3 install -U psycopg2<br>
         pip3 install -U oracledb<br>
         pip3 install -U pyodbc</p>
-      <p>The following URLs will help with the DEVART components.</p>
-      <p>https://docs.devart.com/odbc/sqlserver/using_odbc_driver.htm<br>
-        https://www.devart.com/odbc/sqlserver/download.html<br>
-        https://docs.devart.com/odbc/sqlserver/configuring_odbc_dsn_on_linux.htm<br>
-        <br>
-        On Windows the PythonPath Environment Variable must be set - be sure to
-        adjust this to your particular computer and QGIS Version:<br>
+      <h3>Windows 10/11<br>
+      </h3>
+      <p> On Windows the "PythonPath" Environment Variable must be set - be sure
+        to adjust this to your particular computer and QGIS Version:<br>
         PYTHONPATH<br>
-        C:\Program Files\QGIS 3.34.1\apps\qgis\python;C:\Program Files\QGIS
-        3.34.1\apps\qgis\python\plugins;C:\Program Files\QGIS
-        3.34.1\apps\Qt5\plugins;C:\Program Files\QGIS 3.34.1\share\gdal;</p>
+        C:\Program Files\QGIS 3.28.15\apps\qgis\python;C:\Program Files\QGIS
+        3.28.15\apps\qgis\python\plugins;C:\Program Files\QGIS
+        3.28.15\apps\Qt5\plugins;C:\Program Files\QGIS 3.28.15\share\gdal;</p>
+      <p>C:\Program Files\QGIS 3.28.15\apps\Python39\Scripts\pip3 install -U
+        psycopg2<br>
+        C:\Program Files\QGIS 3.28.15\apps\Python39\Scripts\pip3 install -U
+        oracledb<br>
+        C:\Program Files\QGIS 3.28.15\apps\Python39\Scripts\ pip3 install -U
+        pyodbc</p>
+      <h3>Devart components<br>
+      </h3>
+      The Devart components are used by the 'pyodbc' connector to deal with the
+      MS SQL Server and Oracle. i.e. If you are uploading to PostgreSQL or
+      Oracle (and the oracledb connector is working) then the Devart components
+      are not necessary.</div>
+    <div style="text-align: left;">Note: QGIS 3.28.15 has Python 3.9 as part of
+      its installation!</div>
+    <div style="text-align: left;"><br>
+    </div>
+    <div style="text-align: left;">The following URLs will help with the DEVART
+      components.</div>
+    <div style="text-align: left;"><a href="https://www.devart.com/python/oracle/download.html">https://www.devart.com/python/oracle/download.html</a></div>
+    <div style="text-align: left;"><span style="color: rgb(61, 61, 61); font-family: fira-sans, sans-serif; font-size: 18px; font-style: normal; font-variant-ligatures: none; font-variant-caps: normal; font-weight: 500; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Python
+        Connector for Oracle 1.0 - Python 3.9 for Windows</span></div>
+    <div style="text-align: left;"><span style="color: rgb(61, 61, 61); font-family: fira-sans, sans-serif; font-size: 18px; font-style: normal; font-variant-ligatures: none; font-variant-caps: normal; font-weight: 500; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Or<br>
+      </span></div>
+    <div style="text-align: left;"><span style="color: rgb(61, 61, 61); font-family: fira-sans, sans-serif; font-size: 18px; font-style: normal; font-variant-ligatures: none; font-variant-caps: normal; font-weight: 500; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Python
+        Connector for Oracle 1.0 - Python 3.9 for Linux</span></div>
+    <div style="text-align: left;"><br>
+      cd C:\Users\r\Downloads\devart_oracle_cp39_win\DevartPythonOracle\whl</div>
+    <div style="text-align: left;">"C:\Program Files\QGIS
+      3.28.15\apps\Python39\Scripts\pip3" install
+      devart_oracle_connector-1.0.1-cp39-cp39-win_amd64.whl
+      <p><a href="https://www.devart.com/python/sqlserver/download.html">https://www.devart.com/python/sqlserver/download.html</a></p>
+      <span style="color: rgb(61, 61, 61); font-family: fira-sans, sans-serif; font-size: 18px; font-style: normal; font-variant-ligatures: none; font-variant-caps: normal; font-weight: 500; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Python
+        Connector for SQL Server 1.0 - Python 3.9 for Windows</span><span style="color: rgb(61, 61, 61); font-family: fira-sans, sans-serif; font-size: 18px; font-style: normal; font-variant-ligatures: none; font-variant-caps: normal; font-weight: 500; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;"><br>
+      </span></div>
+    <div style="text-align: left;"><span style="color: rgb(61, 61, 61); font-family: fira-sans, sans-serif; font-size: 18px; font-style: normal; font-variant-ligatures: none; font-variant-caps: normal; font-weight: 500; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Or</span></div>
+    <div style="text-align: left;"><span style="color: rgb(61, 61, 61); font-family: fira-sans, sans-serif; font-size: 18px; font-style: normal; font-variant-ligatures: none; font-variant-caps: normal; font-weight: 500; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; white-space: normal; background-color: rgb(255, 255, 255); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; display: inline !important; float: none;">Python
+        Connector for SQL Server 1.0 - Python 3.9 for Linux</span>
+      <div style="text-align: left;"></div>
+      <p>cd
+        C:\Users\r\Downloads\devart_sqlserver_cp39_win\DevartPythonSqlServer\whl</p>
+      <p>"C:\Program Files\QGIS 3.28.15\apps\Python39\Scripts\pip3" install
+        devart_sqlserver_connector-1.0.1-cp39-cp39-win_amd64.whl<br>
+      </p>
+      <h2>Sample Database .config files:</h2>
+      <p>The plugin stores the database connection details for easy reuse. These
+        are included in the Plugin's folder but need to be moved to the user's
+        home folder before they can be accessed.</p>
+      <p>The first 3 characters indicate the connection type:</p>
+      <p> </p>
+      <p>
+      </p>
+      <h3 style=" margin: 0px; text-indent: 0px; text-align: left;"><!--StartFragment-->PGS_ST_SDL.Config
+        (Postgres)</h3>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;">host=192.168.56.1<br>
+        database=gisdb<br>
+        user=rogermsu<br>
+        password=rogermsu<br>
+        port=15432<br>
+        schemaname=test123<br>
+        tableSRID=EPSG:7844<br>
+        DatabaseType=PGS<br>
+        Output2=Serv</p>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;"><br>
+      </p>
+      <h3 style=" margin: 0px; text-indent: 0px; text-align: left;">MSS_ST_SDL.Config
+        (Microsoft SQL Server via Devart)<br>
+      </h3>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;">host=192.168.56.1<br>
+        database=gisdb<br>
+        user=drrog<br>
+        password=drrog<br>
+        port=11433<br>
+        schemaname=testSchema<br>
+        tableSRID=EPSG:7844<br>
+        DatabaseType=MSS<br>
+        Output2=Both<br>
+      </p>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;"><br>
+      </p>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;"></p>
+      <h3 style=" margin: 0px; text-indent: 0px; text-align: left;">ORA_ST_SDL.Config
+        (Oracle)<br>
+      </h3>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;">host=192.168.56.1<br>
+        database=xe<br>
+        user=drrog<br>
+        password=drrog<br>
+        port=11521<br>
+        schemaname=testSchema<br>
+        tableSRID=EPSG:7844<br>
+        DatabaseType=ORA<br>
+        Output2=Both<br>
+      </p>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;"><br>
+      </p>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;"></p>
+      <h3 style=" margin: 0px; text-indent: 0px; text-align: left;">ORD_ST_SDL.Config
+        (Oracle via Devart)<br>
+      </h3>
+      host=192.168.56.1<br>
+      database=free<br>
+      user=drrog<br>
+      password=drrog<br>
+      port=1521<br>
+      schemaname=testSchema<br>
+      tableSRID=EPSG:7844<br>
+      DatabaseType=ORD<br>
+      Output2=Both
+      <p style="margin: 0px; text-indent: 0px; text-align: left;"></p>
+      <p style="margin: 0px; text-indent: 0px; text-align: left;"><!--EndFragment--></p>
       <h4>Some Postgres code to get started with (PGADMIN4):</h4>
       <p>CREATE DATABASE gisdb WITH OWNER = postgres ENCODING = 'UTF8'
         TABLESPACE = pg_default CONNECTION LIMIT = 300;<br>

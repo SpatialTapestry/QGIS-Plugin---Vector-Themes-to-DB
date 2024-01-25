@@ -439,7 +439,7 @@ class VectorToDBLoader:
             myGBL.update({'Output2': "Both"}) 
         self.dlg.label_12.setText(myGBL['DatabaseType'] + " and " + myGBL['Output2']) 
         self.dlg.btn_Load_QGISThemes.setText("Process the QGIS Selected Themes to " + myGBL['Output2'])
-        self.dlg.btn_Delete_QGISThemes.setText("Delete the QGIS Selected Themes to " + myGBL['Output2'])
+        self.dlg.btn_Delete_QGISThemes.setText("Delete the QGIS Selected Themes from " + myGBL['Output2'])
 
     def run(self):
         """Run method that performs all the real work"""
@@ -467,7 +467,7 @@ class VectorToDBLoader:
             myGBL.update({'Output2': "Both"}) 
             self.dlg.label_12.setText(myGBL['DatabaseType'] + " and " + myGBL['Output2']) 
             self.dlg.btn_Load_QGISThemes.setText("Process the QGIS Selected Themes to " + myGBL['Output2'])
-            self.dlg.btn_Delete_QGISThemes.setText("Delete the QGIS Selected Themes to " + myGBL['Output2'])
+            self.dlg.btn_Delete_QGISThemes.setText("Delete the QGIS Selected Themes from " + myGBL['Output2'])
 
         # show the dialog
         self.dlg.show()
@@ -582,7 +582,7 @@ def showProjectFile(self):
 
             self.dlg.label_12.setText(myGBL['DatabaseType'] + " and " + myGBL['Output2']) 
             self.dlg.btn_Load_QGISThemes.setText("Process the QGIS Selected Themes to " + myGBL['Output2'])
-            self.dlg.btn_Delete_QGISThemes.setText("Delete the QGIS Selected Themes to " + myGBL['Output2'])
+            self.dlg.btn_Delete_QGISThemes.setText("Delete the QGIS Selected Themes from " + myGBL['Output2'])
 
             self.iface.messageBar().pushMessage(
                 "Config File Loaded:", myGBL['ConFileName'],
@@ -611,7 +611,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
     tableSRID = myGBL['tableSRID'].replace("EPSG:","")
     DatabaseType = myGBL['DatabaseType']
     Output2 = myGBL['Output2']
-    OutFileName = os.path.expanduser( '~' ) + "/" +  DatabaseType + "_" + layername + ".sql"
+    SQLFileName = os.path.expanduser( '~' ) + "/" +  DatabaseType + "_" + layername + ".sql"
     myGBL.update({'LogFileName': os.path.expanduser( '~' ) + "/" +  DatabaseType + "_" + layername + ".txt"}) 
 
     with open(myGBL['LogFileName'], 'w') as log_file:
@@ -634,7 +634,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
         connDEV = returnMSS(**myGBL)
         #connDEV.autocommit = True
 
-    with open(OutFileName, 'w') as output_file:
+    with open(SQLFileName, 'w') as outSQL_file:
         
         dateBeg = datetime.datetime.now()
         newTblName = layername
@@ -644,7 +644,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
             newTblName = myGBL['PG_Schema'] + "." + layername
 
         line = "-- " + layername + " has " + str(vl.featureCount()) + " features..." + '\n'
-        output_file.write(line)
+        outSQL_file.write(line)
         ncount = 0
         ora2Long = 0
         sqlStr = ""
@@ -769,7 +769,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
             sqlStr = sqlStr + ");"
             sqlStr = sqlStr.replace("," + '\n' + ")", ")")
         if Output2 == "File" or Output2 == "Both":
-            output_file.write(sqlStr.replace(chr(140),";").replace(chr(141),'\n') + '\n')
+            outSQL_file.write(sqlStr.replace(chr(140),";").replace(chr(141),'\n') + '\n')
         insStr = insStr + ") values "
         insStr = insStr.replace(",)", ")")
         if Output2 == "Serv" or Output2 == "Both":
@@ -794,135 +794,60 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
         
         for f in vl.getFeatures():
             ncount = ncount + 1
-            geom = f.geometry()
+            if ncount <= 2000:
+                geom = f.geometry()
 
-            fromCRS = vl.sourceCrs()
-            destCRS = QgsCoordinateReferenceSystem(myGBL['tableSRID'])
-            ct = QgsCoordinateTransform(fromCRS, destCRS, QgsProject.instance())
-            geom.transform(ct)
-            # myGBL['tableSRID'].replace("EPSG:","")
+                fromCRS = vl.sourceCrs()
+                destCRS = QgsCoordinateReferenceSystem(myGBL['tableSRID'])
+                ct = QgsCoordinateTransform(fromCRS, destCRS, QgsProject.instance())
+                geom.transform(ct)
+                # myGBL['tableSRID'].replace("EPSG:","")
 
-            geoStr = "NULL"
-            if DatabaseType == "ORA" or DatabaseType == "ORD":
-                geoStr = "NULL," + str(ncount)
-            # print (geom.asWkb())
-            # geomTyp = geom.wkbType()
-            didBind = False
-            if (DatabaseType == "ORA" or DatabaseType == "ORD") and len(geom.asWkt()) > 4000:
-                # too long for Oracle's varchar2 client side (4000 chars) so use server side binding (327?? chars)
-                if len(geom.asWkt()) > 32700:
-                    ora2Long = ora2Long + 1
-                didBind = True
-                bindSt = "/" + chr(141)
-                bindSt = bindSt + "declare" + chr(141)
-                bindSt = bindSt + " v_sql varchar2(" + str(len(geom.asWkt()) + len(newTblName) + 150) + ")" + chr(140) + chr(141)
-                bindSt = bindSt + " v_clob clob" + chr(140) + chr(141)
-                bindSt = bindSt + "begin" + chr(141)
-                bindSt = bindSt + "  v_clob := CAST('" + str(geom.asWkt()) + "' as clob)" + chr(140) + chr(141)
-                bindSt = bindSt + "  v_sql := 'insert into " + newTblName + " (stid,geom) values(:id,sdo_util.from_wktgeometry(:clob))'" + chr(140) + chr(141)
-                bindSt = bindSt + "  execute immediate v_sql" + chr(141)
-                bindSt = bindSt + "  using " + str(ncount) + ", v_clob" + chr(140) + chr(141)
-                bindSt = bindSt + "  commit" + chr(140) + chr(141)
-                bindSt = bindSt + "end" + chr(140) + chr(141)
-                bindSt = bindSt + "/" + chr(141)
+                geoStr = "NULL"
+                if DatabaseType == "ORA" or DatabaseType == "ORD":
+                    geoStr = "NULL," + str(ncount)
+                # print (geom.asWkb())
+                # geomTyp = geom.wkbType()
+                didBind = False
+                if (DatabaseType == "ORA" or DatabaseType == "ORD") and len(geom.asWkt()) > 4000:
+                    # too long for Oracle's varchar2 client side (4000 chars) so use server side binding (327?? chars)
+                    if len(geom.asWkt()) > 32700:
+                        ora2Long = ora2Long + 1
+                    didBind = True
+                    bindSt = "/" + chr(141)
+                    bindSt = bindSt + "declare" + chr(141)
+                    bindSt = bindSt + " v_sql varchar2(" + str(len(geom.asWkt()) + len(newTblName) + 150) + ")" + chr(140) + chr(141)
+                    bindSt = bindSt + " v_clob clob" + chr(140) + chr(141)
+                    bindSt = bindSt + "begin" + chr(141)
+                    bindSt = bindSt + "  v_clob := CAST('" + str(geom.asWkt()) + "' as clob)" + chr(140) + chr(141)
+                    bindSt = bindSt + "  v_sql := 'insert into " + newTblName + " (stid,geom) values(:id,sdo_util.from_wktgeometry(:clob))'" + chr(140) + chr(141)
+                    bindSt = bindSt + "  execute immediate v_sql" + chr(141)
+                    bindSt = bindSt + "  using " + str(ncount) + ", v_clob" + chr(140) + chr(141)
+                    bindSt = bindSt + "  commit" + chr(140) + chr(141)
+                    bindSt = bindSt + "end" + chr(140) + chr(141)
+                    bindSt = bindSt + "/" + chr(141)
 
-                if Output2 == "File" or Output2 == "Both":
-                    output_file.write(bindSt.replace(chr(140),";").replace(chr(141),'\n'))
-                if Output2 == "Serv" or Output2 == "Both":
-                    if DatabaseType == "ORA":
-                        runORASQL(bindSt.replace(chr(140)," ").replace(chr(141)," "), connOra, myGBL['LogFileName'])
-                    if DatabaseType == "ORD":
-                        runORDSQL(bindSt.replace(chr(140)," ").replace(chr(141)," "), connOrD, myGBL['LogFileName'])
+                    if Output2 == "File" or Output2 == "Both":
+                        outSQL_file.write(bindSt.replace(chr(140),";").replace(chr(141),'\n'))
+                    if Output2 == "Serv" or Output2 == "Both":
+                        if DatabaseType == "ORA":
+                            runORASQL(bindSt.replace(chr(140)," ").replace(chr(141)," "), connOra, myGBL['LogFileName'])
+                        if DatabaseType == "ORD":
+                            runORDSQL(bindSt.replace(chr(140)," ").replace(chr(141)," "), connOrD, myGBL['LogFileName'])
 
-                updStr = "update " + newTblName + " set " + chr(141)
-                for field in vl.fields():
-                    lc_FldNm = field.name().lower()
-                    if str(f[field.name()]) == "NULL":
-                        nullComment = "do not update"
-                    elif field.typeName() == "Integer64":
-                        updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
-                    elif field.typeName() == "Integer32" or field.typeName() == "Integer":
-                        updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
-                    elif field.typeName() == "Integer16":
-                        updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
-                    elif field.typeName() == "String":
-                        # specChar = "( ) - & @ * $ | % "
-                        oraStr = str(f[field.name()]).replace("'","''").replace(chr(34),chr(134))
-                        oraStr = oraStr.replace("(",chr(135) + "(" + chr(135))
-                        oraStr = oraStr.replace(")",chr(135) + ")" + chr(135))
-                        oraStr = oraStr.replace("-",chr(135) + "-" + chr(135))
-                        oraStr = oraStr.replace(".",chr(135) + "." + chr(135))
-                        oraStr = oraStr.replace("&",chr(135) + "&" + chr(135))
-                        oraStr = oraStr.replace("@",chr(135) + "@" + chr(135))
-                        oraStr = oraStr.replace("*",chr(135) + "*" + chr(135))
-                        oraStr = oraStr.replace("$",chr(135) + "$" + chr(135))
-                        oraStr = oraStr.replace("|",chr(135) + "|" + chr(135))
-                        oraStr = oraStr.replace("%",chr(135) + "%" + chr(135))
-                        oraStr = oraStr.replace(chr(135),"'||'")
-                        oraStr = oraStr.replace(chr(134),"'||'" + chr(34) + "'||'")
-                        updStr = updStr + lc_FldNm + "='" + oraStr + "',"
-                    elif field.typeName() == "Date":
-                        DATETIME_FORMAT = 'yyyy-MM-dd'
-                        qd8 = str(f[field.name()]).replace("PyQt5.QtCore.QDate","")
-                        qd8 = qd8.replace(", ", "/").replace("(","").replace(")","")
-                        updStr = updStr + lc_FldNm + "=" + "TO_DATE('" + qd8 + "', 'YYYY/MM/DD'),"
-                    elif field.typeName() == "DateTime":
-                        DATETIME_FORMAT = 'yyyy-MM-dd HH:mm:ss'
-                        qd8 = str(f[field.name()]).replace("PyQt5.QtCore.QDateTime(","").replace(")","")
-                        qd8 = qd8.replace(", ", "-")
-                        qd8Arr = qd8.split("-")
-                        # TO_DATE('2008-11-18 14:13:59', 'YYYY-MM-DD HH24:Mi:SS')
-                        qd8 = qd8Arr[0] + "-" + qd8Arr[1] + "-" + qd8Arr[2]
-                        if len(qd8Arr) > 3:
-                            qd8 = qd8 + " " + qd8Arr[3]
-                        else:
-                            qd8 = qd8 + " 0"
-                        if len(qd8Arr) > 4:
-                            qd8 = qd8 + ":" + qd8Arr[4]
-                        else:
-                            qd8 = qd8 + ":0"
-                        if len(qd8Arr) > 5:
-                            qd8 = qd8 + ":" + qd8Arr[5]
-                        else:
-                            qd8 = qd8 + ":0"
-                        updStr = updStr + lc_FldNm + "=" + "TO_DATE('" + qd8 + "', 'YYYY-MM-DD HH24:Mi:SS'),"                            
-                    elif field.typeName() == "Real" or field.typeName() == "Float":
-                        updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
-                    elif field.typeName() == "Double" or field.typeName() == "Float32":
-                        updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
-            
-                updStr = updStr + ") where stid=" + str(ncount)
-                updStr = updStr.replace(",)", "")
-                if Output2 == "File" or Output2 == "Both":
-                    output_file.write(updStr + ";" + '\n')
-                if Output2 == "Serv" or Output2 == "Both":
-                    if DatabaseType == "ORA":
-                        runORASQL(updStr, connOra, myGBL['LogFileName'])
-                        runORASQL("commit", connOra, myGBL['LogFileName'])
-                    if DatabaseType == "ORD":
-                        runORDSQL(updStr, connOrD, myGBL['LogFileName'])
-                        runORDSQL("commit", connOrD, myGBL['LogFileName'])
-
-            elif str(geom.asWkt()) != "":
-                if DatabaseType == "PGS":
-                    geoStr = "st_setSRID(ST_GeomFromText('" + str(geom.asWkt()) + "')," + tableSRID + ")"
-                elif DatabaseType == "ORA" or DatabaseType == "ORD":
-                    geoStr = "SDO_UTIL.FROM_WKTGEOMETRY('" + geom.asWkt() + "')," + str(ncount)
-                elif DatabaseType == "MSS":
-                    geoStr = "geography::STGeomFromText('" + str(geom.asWkt()) + "'," + tableSRID + ")"
- 
-            if didBind == False:
-                valStr = valStr + "(" + geoStr + ","
-                for field in vl.fields():
-                    if field.typeName() == "Integer64":
-                        valStr = valStr + str(f[field.name()]) + ","
-                    elif field.typeName() == "Integer32" or field.typeName() == "Integer":
-                        valStr = valStr + str(f[field.name()]) + ","
-                    elif field.typeName() == "Integer16":
-                        valStr = valStr + str(f[field.name()]) + ","
-                    elif field.typeName() == "String":
-                        if DatabaseType == "ORA" or DatabaseType == "ORD":
-                           # specChar = "( ) - & @ * $ | % "
+                    updStr = "update " + newTblName + " set " + chr(141)
+                    for field in vl.fields():
+                        lc_FldNm = field.name().lower()
+                        if str(f[field.name()]) == "NULL":
+                            nullComment = "do not update"
+                        elif field.typeName() == "Integer64":
+                            updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
+                        elif field.typeName() == "Integer32" or field.typeName() == "Integer":
+                            updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
+                        elif field.typeName() == "Integer16":
+                            updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
+                        elif field.typeName() == "String":
+                            # specChar = "( ) - & @ * $ | % "
                             oraStr = str(f[field.name()]).replace("'","''").replace(chr(34),chr(134))
                             oraStr = oraStr.replace("(",chr(135) + "(" + chr(135))
                             oraStr = oraStr.replace(")",chr(135) + ")" + chr(135))
@@ -936,113 +861,189 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
                             oraStr = oraStr.replace("%",chr(135) + "%" + chr(135))
                             oraStr = oraStr.replace(chr(135),"'||'")
                             oraStr = oraStr.replace(chr(134),"'||'" + chr(34) + "'||'")
-                            valStr = valStr + "'" + oraStr + "',"
-                        else:                          
-                            valStr = valStr + "'" + str(f[field.name()]).replace("'","''") + "',"
-                    elif field.typeName() == "Date":
-                        # valStr = valStr + "'" + format_date(f[field.name()],DATETIME_FORMAT) + "',"
-                        DATETIME_FORMAT = 'yyyy-MM-dd'
-                        # QgsExpression('format_date(f[field.name()], DATETIME_FORMAT)').evaluate(ctx)
-                        # 'PyQt5.QtCore.QDate(1999, 10, 1)'
-                        if str(f[field.name()]) == "NULL":
-                            valStr = valStr + "NULL,"
-                        else:
+                            updStr = updStr + lc_FldNm + "='" + oraStr + "',"
+                        elif field.typeName() == "Date":
+                            DATETIME_FORMAT = 'yyyy-MM-dd'
                             qd8 = str(f[field.name()]).replace("PyQt5.QtCore.QDate","")
-                            if DatabaseType == "PGS" or DatabaseType == "MSS":
-                                qd8 = qd8.replace(", ", "-")
-                                if DatabaseType == "MSS":
-                                    qd8 = qd8.replace("(", "").replace(")", "")
-                                valStr = valStr + "'" + qd8 + "',"
-                            elif DatabaseType == "ORA" or DatabaseType == "ORD":
-                                qd8 = qd8.replace(", ", "/").replace("(","").replace(")","")
-                                valStr = valStr + "TO_DATE('" + qd8 + "', 'YYYY/MM/DD'),"                            
-                    elif field.typeName() == "DateTime":
-                        # buildtime:QgsDateTimeFieldFormatter
-                        DATETIME_FORMAT = 'yyyy-MM-dd HH:mm:ss'
-                        # valStr = valStr + "'" + format_date(f[field.name()],DATETIME_FORMAT) + "',"
-                        if str(f[field.name()]) == "NULL":
-                            valStr = valStr + "NULL,"
-                        else:
-                            # PyQt5.QtCore.QDateTime(2020, 8, 28, 12, 39, 52, 360)
-                            # valStr = valStr + str(f[field.name()]) + ","
-                            # "yyyy/mm/dd HH:mm:ss"
+                            qd8 = qd8.replace(", ", "/").replace("(","").replace(")","")
+                            updStr = updStr + lc_FldNm + "=" + "TO_DATE('" + qd8 + "', 'YYYY/MM/DD'),"
+                        elif field.typeName() == "DateTime":
+                            DATETIME_FORMAT = 'yyyy-MM-dd HH:mm:ss'
                             qd8 = str(f[field.name()]).replace("PyQt5.QtCore.QDateTime(","").replace(")","")
                             qd8 = qd8.replace(", ", "-")
                             qd8Arr = qd8.split("-")
-                            if DatabaseType == "PGS" or DatabaseType == "MSS":
-                                qd8 = qd8Arr[0] + "-" + qd8Arr[1] + "-" + qd8Arr[2]
-                                if len(qd8Arr) > 3:
-                                    qd8 = qd8 + " " + qd8Arr[3]
-                                if len(qd8Arr) > 4:
-                                    qd8 = qd8 + ":" + qd8Arr[4]
-                                if len(qd8Arr) > 5:
-                                    qd8 = qd8 + ":" + qd8Arr[5]
-                                if len(qd8Arr) > 6:
-                                    qd8 = qd8 + "." + qd8Arr[6]
-                                valStr = valStr + "'" + qd8 + "',"
+                            # TO_DATE('2008-11-18 14:13:59', 'YYYY-MM-DD HH24:Mi:SS')
+                            qd8 = qd8Arr[0] + "-" + qd8Arr[1] + "-" + qd8Arr[2]
+                            if len(qd8Arr) > 3:
+                                qd8 = qd8 + " " + qd8Arr[3]
+                            else:
+                                qd8 = qd8 + " 0"
+                            if len(qd8Arr) > 4:
+                                qd8 = qd8 + ":" + qd8Arr[4]
+                            else:
+                                qd8 = qd8 + ":0"
+                            if len(qd8Arr) > 5:
+                                qd8 = qd8 + ":" + qd8Arr[5]
+                            else:
+                                qd8 = qd8 + ":0"
+                            updStr = updStr + lc_FldNm + "=" + "TO_DATE('" + qd8 + "', 'YYYY-MM-DD HH24:Mi:SS'),"                            
+                        elif field.typeName() == "Real" or field.typeName() == "Float":
+                            updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
+                        elif field.typeName() == "Double" or field.typeName() == "Float32":
+                            updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
+                
+                    updStr = updStr + ") where stid=" + str(ncount)
+                    updStr = updStr.replace(",)", "")
+                    if Output2 == "File" or Output2 == "Both":
+                        outSQL_file.write(updStr + ";" + '\n')
+                    if Output2 == "Serv" or Output2 == "Both":
+                        if DatabaseType == "ORA":
+                            runORASQL(updStr, connOra, myGBL['LogFileName'])
+                            runORASQL("commit", connOra, myGBL['LogFileName'])
+                        if DatabaseType == "ORD":
+                            runORDSQL(updStr, connOrD, myGBL['LogFileName'])
+                            runORDSQL("commit", connOrD, myGBL['LogFileName'])
 
-                            elif DatabaseType == "ORA" or DatabaseType == "ORD":
-                                # TO_DATE('2008-11-18 14:13:59', 'YYYY-MM-DD HH24:Mi:SS')
-                                qd8 = qd8Arr[0] + "-" + qd8Arr[1] + "-" + qd8Arr[2]
-                                if len(qd8Arr) > 3:
-                                    qd8 = qd8 + " " + qd8Arr[3]
-                                else:
-                                    qd8 = qd8 + " 0"
-                                if len(qd8Arr) > 4:
-                                    qd8 = qd8 + ":" + qd8Arr[4]
-                                else:
-                                    qd8 = qd8 + ":0"
-                                if len(qd8Arr) > 5:
-                                    qd8 = qd8 + ":" + qd8Arr[5]
-                                else:
-                                    qd8 = qd8 + ":0"
-                                valStr = valStr + "TO_DATE('" + qd8 + "', 'YYYY-MM-DD HH24:Mi:SS'),"                            
+                elif str(geom.asWkt()) != "":
+                    if DatabaseType == "PGS":
+                        geoStr = "st_setSRID(ST_GeomFromText('" + str(geom.asWkt()) + "')," + tableSRID + ")"
+                    elif DatabaseType == "ORA" or DatabaseType == "ORD":
+                        geoStr = "SDO_UTIL.FROM_WKTGEOMETRY('" + geom.asWkt() + "')," + str(ncount)
+                    elif DatabaseType == "MSS":
+                        geoStr = "geography::STGeomFromText('" + str(geom.asWkt()) + "'," + tableSRID + ")"
+    
+                if didBind == False:
+                    valStr = valStr + "(" + geoStr + ","
+                    for field in vl.fields():
+                        if field.typeName() == "Integer64":
+                            valStr = valStr + str(f[field.name()]) + ","
+                        elif field.typeName() == "Integer32" or field.typeName() == "Integer":
+                            valStr = valStr + str(f[field.name()]) + ","
+                        elif field.typeName() == "Integer16":
+                            valStr = valStr + str(f[field.name()]) + ","
+                        elif field.typeName() == "String":
+                            if DatabaseType == "ORA" or DatabaseType == "ORD":
+                            # specChar = "( ) - & @ * $ | % "
+                                oraStr = str(f[field.name()]).replace("'","''").replace(chr(34),chr(134))
+                                oraStr = oraStr.replace("(",chr(135) + "(" + chr(135))
+                                oraStr = oraStr.replace(")",chr(135) + ")" + chr(135))
+                                oraStr = oraStr.replace("-",chr(135) + "-" + chr(135))
+                                oraStr = oraStr.replace(".",chr(135) + "." + chr(135))
+                                oraStr = oraStr.replace("&",chr(135) + "&" + chr(135))
+                                oraStr = oraStr.replace("@",chr(135) + "@" + chr(135))
+                                oraStr = oraStr.replace("*",chr(135) + "*" + chr(135))
+                                oraStr = oraStr.replace("$",chr(135) + "$" + chr(135))
+                                oraStr = oraStr.replace("|",chr(135) + "|" + chr(135))
+                                oraStr = oraStr.replace("%",chr(135) + "%" + chr(135))
+                                oraStr = oraStr.replace(chr(135),"'||'")
+                                oraStr = oraStr.replace(chr(134),"'||'" + chr(34) + "'||'")
+                                valStr = valStr + "'" + oraStr + "',"
+                            else:                          
+                                valStr = valStr + "'" + str(f[field.name()]).replace("'","''") + "',"
+                        elif field.typeName() == "Date":
+                            # valStr = valStr + "'" + format_date(f[field.name()],DATETIME_FORMAT) + "',"
+                            DATETIME_FORMAT = 'yyyy-MM-dd'
+                            # QgsExpression('format_date(f[field.name()], DATETIME_FORMAT)').evaluate(ctx)
+                            # 'PyQt5.QtCore.QDate(1999, 10, 1)'
+                            if str(f[field.name()]) == "NULL":
+                                valStr = valStr + "NULL,"
+                            else:
+                                qd8 = str(f[field.name()]).replace("PyQt5.QtCore.QDate","")
+                                if DatabaseType == "PGS" or DatabaseType == "MSS":
+                                    qd8 = qd8.replace(", ", "-")
+                                    if DatabaseType == "MSS":
+                                        qd8 = qd8.replace("(", "").replace(")", "")
+                                    valStr = valStr + "'" + qd8 + "',"
+                                elif DatabaseType == "ORA" or DatabaseType == "ORD":
+                                    qd8 = qd8.replace(", ", "/").replace("(","").replace(")","")
+                                    valStr = valStr + "TO_DATE('" + qd8 + "', 'YYYY/MM/DD'),"                            
+                        elif field.typeName() == "DateTime":
+                            # buildtime:QgsDateTimeFieldFormatter
+                            DATETIME_FORMAT = 'yyyy-MM-dd HH:mm:ss'
+                            # valStr = valStr + "'" + format_date(f[field.name()],DATETIME_FORMAT) + "',"
+                            if str(f[field.name()]) == "NULL":
+                                valStr = valStr + "NULL,"
+                            else:
+                                # PyQt5.QtCore.QDateTime(2020, 8, 28, 12, 39, 52, 360)
+                                # valStr = valStr + str(f[field.name()]) + ","
+                                # "yyyy/mm/dd HH:mm:ss"
+                                qd8 = str(f[field.name()]).replace("PyQt5.QtCore.QDateTime(","").replace(")","")
+                                qd8 = qd8.replace(", ", "-")
+                                qd8Arr = qd8.split("-")
+                                if DatabaseType == "PGS" or DatabaseType == "MSS":
+                                    qd8 = qd8Arr[0] + "-" + qd8Arr[1] + "-" + qd8Arr[2]
+                                    if len(qd8Arr) > 3:
+                                        qd8 = qd8 + " " + qd8Arr[3]
+                                    if len(qd8Arr) > 4:
+                                        qd8 = qd8 + ":" + qd8Arr[4]
+                                    if len(qd8Arr) > 5:
+                                        qd8 = qd8 + ":" + qd8Arr[5]
+                                    if len(qd8Arr) > 6:
+                                        qd8 = qd8 + "." + qd8Arr[6]
+                                    valStr = valStr + "'" + qd8 + "',"
 
-                    elif field.typeName() == "Real" or field.typeName() == "Float":
-                        valStr = valStr + str(f[field.name()]) + ","
-                    elif field.typeName() == "Double" or field.typeName() == "Float32":
-                        valStr = valStr + str(f[field.name()]) + ","
-                    else:
-                        valStr = valStr + "new field type:" + field.typeName() 
-            
-                valStr = valStr + ")"
-                # Finished looping through the fields of the current feature/record
+                                elif DatabaseType == "ORA" or DatabaseType == "ORD":
+                                    # TO_DATE('2008-11-18 14:13:59', 'YYYY-MM-DD HH24:Mi:SS')
+                                    qd8 = qd8Arr[0] + "-" + qd8Arr[1] + "-" + qd8Arr[2]
+                                    if len(qd8Arr) > 3:
+                                        qd8 = qd8 + " " + qd8Arr[3]
+                                    else:
+                                        qd8 = qd8 + " 0"
+                                    if len(qd8Arr) > 4:
+                                        qd8 = qd8 + ":" + qd8Arr[4]
+                                    else:
+                                        qd8 = qd8 + ":0"
+                                    if len(qd8Arr) > 5:
+                                        qd8 = qd8 + ":" + qd8Arr[5]
+                                    else:
+                                        qd8 = qd8 + ":0"
+                                    valStr = valStr + "TO_DATE('" + qd8 + "', 'YYYY-MM-DD HH24:Mi:SS'),"                            
 
-                # do we save these records??? Depends, lol
-                if DatabaseType == "PGS":
-                    # format up a set of records once it is big enough
-                    if len(valStr) > 50000:
-                        valStr = valStr.replace(",)", ")").replace("'NULL'", "NULL").replace(")(st_setSRID", ")," + '\n' + "(st_setSRID")
-                        valStr = valStr.replace(")(st_transform", ")," + '\n' + "(st_transform")
-                        valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
-                        if Output2 == "File" or Output2 == "Both":
-                            output_file.write(insStr + '\n' + valStr + ";" + '\n')
-                        if Output2 == "Serv" or Output2 == "Both":
-                            runPGSSQL(insStr + valStr, connPGS, myGBL['LogFileName'])
+                        elif field.typeName() == "Real" or field.typeName() == "Float":
+                            valStr = valStr + str(f[field.name()]) + ","
+                        elif field.typeName() == "Double" or field.typeName() == "Float32":
+                            valStr = valStr + str(f[field.name()]) + ","
+                        else:
+                            valStr = valStr + "new field type:" + field.typeName() 
+                
+                    valStr = valStr + ")"
+                    # Finished looping through the fields of the current feature/record
+
+                    # do we save these records??? Depends, lol
+                    if DatabaseType == "PGS":
+                        # format up a set of records once it is big enough
+                        if len(valStr) > 50000:
+                            valStr = valStr.replace(",)", ")").replace("'NULL'", "NULL").replace(")(st_setSRID", ")," + '\n' + "(st_setSRID")
+                            valStr = valStr.replace(")(st_transform", ")," + '\n' + "(st_transform")
+                            valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
+                            if Output2 == "File" or Output2 == "Both":
+                                outSQL_file.write(insStr + '\n' + valStr + ";" + '\n')
+                            if Output2 == "Serv" or Output2 == "Both":
+                                runPGSSQL(insStr + valStr, connPGS, myGBL['LogFileName'])
+                            valStr = ""
+                    elif DatabaseType == "ORA" or DatabaseType == "ORD":
+                        # could not sort out how to insert multiple records per insert
+                        if len(valStr) > 0:
+                            valStr = valStr.replace(",)", ")").replace("'NULL'", "NULL").replace(")(SDO_UTIL", ")," + '\n' + "(SDO_UTIL")
+                            valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
+                            if Output2 == "File" or Output2 == "Both":
+                                outSQL_file.write(insStr + '\n' + valStr + ";" + '\n')
+                            if Output2 == "Serv" or Output2 == "Both":
+                                if DatabaseType == "ORA":
+                                    runORASQL(insStr + valStr.replace('\n',""), connOra, myGBL['LogFileName'])
+                                if DatabaseType == "ORD":
+                                    runORDSQL(insStr + valStr.replace('\n',"") + ";", connOrD, myGBL['LogFileName'])
+                            valStr = ""
+                    elif DatabaseType == "MSS":
+                        # could not sort out how to insert multiple records per insert
+                        if len(valStr) > 0:
+                            valStr = valStr.replace(",)", ")").replace("'NULL'", "NULL").replace(")(geography", ")," + '\n' + "(geography")
+                            valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
+                            if Output2 == "File" or Output2 == "Both":
+                                outSQL_file.write(insStr + '\n' + valStr + ";" + '\n')
+                            if Output2 == "Serv" or Output2 == "Both":
+                                runDEVSQL(insStr + valStr, connDEV, myGBL['LogFileName'])
                         valStr = ""
-                elif DatabaseType == "ORA" or DatabaseType == "ORD":
-                    # could not sort out how to insert multiple records per insert
-                    if len(valStr) > 0:
-                        valStr = valStr.replace(",)", ")").replace("'NULL'", "NULL").replace(")(SDO_UTIL", ")," + '\n' + "(SDO_UTIL")
-                        valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
-                        if Output2 == "File" or Output2 == "Both":
-                            output_file.write(insStr + '\n' + valStr + ";" + '\n')
-                        if Output2 == "Serv" or Output2 == "Both":
-                            if DatabaseType == "ORA":
-                                runORASQL(insStr + valStr.replace('\n',""), connOra, myGBL['LogFileName'])
-                            if DatabaseType == "ORD":
-                                runORDSQL(insStr + valStr.replace('\n',"") + ";", connOrD, myGBL['LogFileName'])
-                        valStr = ""
-                elif DatabaseType == "MSS":
-                    # could not sort out how to insert multiple records per insert
-                    if len(valStr) > 0:
-                        valStr = valStr.replace(",)", ")").replace("'NULL'", "NULL").replace(")(geography", ")," + '\n' + "(geography")
-                        valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
-                        if Output2 == "File" or Output2 == "Both":
-                            output_file.write(insStr + '\n' + valStr + ";" + '\n')
-                        if Output2 == "Serv" or Output2 == "Both":
-                            runDEVSQL(insStr + valStr, connDEV, myGBL['LogFileName'])
-                    valStr = ""
 
 
         # last group of records
@@ -1051,7 +1052,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
             valStr = valStr.replace(")(st_transform", ")," + '\n' + "(st_transform")
             valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
             if Output2 == "File" or Output2 == "Both":
-                output_file.write(insStr + '\n' + valStr + '\n')
+                outSQL_file.write(insStr + '\n' + valStr + '\n')
             if Output2 == "Serv" or Output2 == "Both":
                 runPGSSQL(insStr + valStr, connPGS, myGBL['LogFileName'])
             valStr = ""
@@ -1060,7 +1061,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
                 valStr = valStr.replace(",)", ")").replace("'NULL'", "NULL").replace(")(SDO_UTIL", ")," + '\n' + "(SDO_UTIL")
                 valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
                 if Output2 == "File" or Output2 == "Both":
-                    output_file.write(insStr + '\n' + valStr + ";" + '\n')
+                    outSQL_file.write(insStr + '\n' + valStr + ";" + '\n')
                 if Output2 == "Serv" or Output2 == "Both":
                     if DatabaseType == "ORA":
                         runORASQL(insStr + valStr, connOra, myGBL['LogFileName'])
@@ -1074,7 +1075,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
                 valStr = valStr.replace(",)", ")").replace("'NULL'", "NULL").replace(")(geography", ")," + '\n' + "(geography")
                 valStr = valStr.replace(")(NULL", ")," + '\n' + "(NULL")
                 if Output2 == "File" or Output2 == "Both":
-                    output_file.write(insStr + '\n' + valStr + ";" + '\n')
+                    outSQL_file.write(insStr + '\n' + valStr + ";" + '\n')
                 if Output2 == "Serv" or Output2 == "Both":
                     runDEVSQL(insStr + valStr, myGBL['LogFileName'])
                 valStr = ""
@@ -1083,7 +1084,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
             pgsSQL = "CREATE INDEX " + newTblName.replace(".","_") + "_spidx ON " + newTblName 
             pgsSQL = pgsSQL +" USING gist(geom);" + '\n'
             if Output2 == "File" or Output2 == "Both":
-                output_file.write(";" + '\n' + pgsSQL + '\n')
+                outSQL_file.write(";" + '\n' + pgsSQL + '\n')
             if Output2 == "Serv" or Output2 == "Both":
                 runPGSSQL(pgsSQL + ";", connPGS, myGBL['LogFileName'])
 
@@ -1092,7 +1093,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
             oraSQL = oraSQL +" WHERE T.geom IS NOT NULL"
 
             if Output2 == "File" or Output2 == "Both":
-                output_file.write(";" + '\n' + oraSQL + ";" + '\n' + "commit;" + '\n')
+                outSQL_file.write(";" + '\n' + oraSQL + ";" + '\n' + "commit;" + '\n')
             if Output2 == "Serv" or Output2 == "Both":
                 if DatabaseType == "ORA":
                     runORASQL(oraSQL, connOra, myGBL['LogFileName'])
@@ -1105,7 +1106,7 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
             oraSQL = oraSQL + " INDEXTYPE IS MDSYS.SPATIAL_INDEX_V2"
 
             if Output2 == "File" or Output2 == "Both":
-                output_file.write(";" + '\n' + oraSQL + ";" + '\n' + "commit;" + '\n')
+                outSQL_file.write(";" + '\n' + oraSQL + ";" + '\n' + "commit;" + '\n')
             if Output2 == "Serv" or Output2 == "Both":
                 if DatabaseType == "ORA":
                     runORASQL(oraSQL, connOra, myGBL['LogFileName'])
@@ -1117,13 +1118,13 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
         if DatabaseType == "MSS":
             mssSQL = "CREATE SPATIAL INDEX " + newTblName.replace(".","_") + "_geom_spidx ON " + newTblName + "(geom);" + '\n'
             if Output2 == "File" or Output2 == "Both":
-                output_file.write(mssSQL + '\n')
+                outSQL_file.write(mssSQL + '\n')
             if Output2 == "Serv" or Output2 == "Both":
                 runDEVSQL(mssSQL + ";", connDEV, myGBL['LogFileName'])
 
-        with open(os.path.expanduser( '~' ) + "/log._ImportThemeReport", 'a') as output_file2:
+        with open(os.path.expanduser( '~' ) + "/log._ImportThemeReport", 'a') as ImpLog_file:
             line = "-- " + newTblName + " has " + str(vl.featureCount()) + " features, with " + str(ncount) + " processed."
-            output_file2.write(line + '\n')
+            ImpLog_file.write(line + '\n')
 
             if Output2 == "Serv" or Output2 == "Both":
                 retCount = "?"
@@ -1134,39 +1135,40 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
                     retCount = ORA_fetch1stone("select count(*) from " + newTblName, connOra, myGBL['LogFileName'])
                     if ora2Long > 0:
                         line = "-- *** Warning: " + newTblName + " has " + str(ora2Long) + " features that were not loaded as their geometries were too long (Over 32700 Characters)."
-                        output_file2.write(line + '\n')
+                        ImpLog_file.write(line + '\n')
 
                 if DatabaseType == "ORD":
                     retCount = ORD_fetch1stone("select count(*) from " + newTblName, connOrD, myGBL['LogFileName'])
                     if ora2Long > 0:
                         line = "-- *** Warning: " + newTblName + " has " + str(ora2Long) + " features that were not loaded as their geometries were too long (Over 32700 Characters)."
-                        output_file2.write(line + '\n')
+                        ImpLog_file.write(line + '\n')
 
                 if DatabaseType == "MSS":
                     retCount = DEV_fetch1stone("select count(*) from " + newTblName, connDEV, myGBL['LogFileName'])
 
                 if retCount == "None":
-                    output_file2.write("An error occured getting Count(*) from " + newTblName + '\n')
+                    ImpLog_file.write("An error occured getting Count(*) from " + newTblName + '\n')
                 else:
                     line = "-- " + newTblName + " has " + retCount + " features saved."
                     line = line.replace("(","").replace(",)","") 
-                    output_file2.write(line + '\n')
+                    ImpLog_file.write(line + '\n')
 
             dateEnd = datetime.datetime.now()
             diffDate = (dateEnd - dateBeg).total_seconds()
             line = "Started at: " + str(dateBeg) + " and Finished at: " + str(dateEnd)
-            output_file2.write(line + '\n')
+            ImpLog_file.write(line + '\n')
             if diffDate > 1:
                 line = "Approx Records/Second: " + str(int(vl.featureCount() / diffDate))
-                output_file2.write(line + '\n')
+                ImpLog_file.write(line + '\n')
 
             log_file.close
-            output_file2.close
+            ImpLog_file.close
             if Output2 == "Serv":
-                os.remove(OutFileName)
+                outSQL_file.close
+                os.remove(SQLFileName)
 
         self.iface.messageBar().pushMessage(
-            "Success", "Output file written at " + OutFileName,
+            "Success", "Output file written at " + SQLFileName,
             level=Qgis.Success, duration=3)
 
     print ("done")
