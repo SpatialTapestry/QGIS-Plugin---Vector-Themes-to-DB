@@ -791,15 +791,15 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
 
         # write feature attributes
         valStr = ""
-        
+        fromCRS = vl.sourceCrs()
+        destCRS = QgsCoordinateReferenceSystem(myGBL['tableSRID'])
+        ct = QgsCoordinateTransform(fromCRS, destCRS, QgsProject.instance())
+
         for f in vl.getFeatures():
             ncount = ncount + 1
             if ncount <= 2000:
                 geom = f.geometry()
 
-                fromCRS = vl.sourceCrs()
-                destCRS = QgsCoordinateReferenceSystem(myGBL['tableSRID'])
-                ct = QgsCoordinateTransform(fromCRS, destCRS, QgsProject.instance())
                 geom.transform(ct)
                 # myGBL['tableSRID'].replace("EPSG:","")
 
