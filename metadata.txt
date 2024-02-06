@@ -14,7 +14,7 @@ qgisMinimumVersion=3.28
 description=Loads Active Vector Themes to PostGIS, Oracle and MS SQL
 about=NOTE!!! This plugin will crash on initial download as there are missing Python Connectors to the databases. See "VectorThemes2Databases.html" in the plugin folder for User and Installation instructions. Python Database Connectors: psycopg2, oracledb, pyodbc,{Devart ODBC Driver for Oracle},{Devart ODBC Driver for SQL Server}
 
-version=0.1
+version=0.2
 
 # Optional items:
 
@@ -35,7 +35,7 @@ experimental=False
 deprecated=False
 
 # Author contact information
-author=Roger Merritt, Spatial Tapestry P/L
+author=Roger Merritt, Spatial Tapestry PL
 email=SpatialTapestry@gmail.com
 
 # Since QGIS 3.8, a comma separated list of plugins to be installed

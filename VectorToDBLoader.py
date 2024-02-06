@@ -105,8 +105,6 @@ connDEV: pyodbc
 
 
 myGBL = {}
-#myGBL.update({'ConFileName': os.path.expanduser( '~' ) + '/ST_SDL.Config'}) 
-#myGBL.update({'LogFileName': os.path.expanduser( '~' ) + '/aaa.log'}) 
 
 class VectorToDBLoader:
     """QGIS Plugin Implementation."""
@@ -272,7 +270,7 @@ class VectorToDBLoader:
             if myGBL['DatabaseType'] == "PGS":
                 connPGS = returnPGS(**myGBL)
                 cursor = connPGS.cursor()
-                cursor.execute(sqlStr)
+                cursor.execute(sqlStr.replace("NUMBER","INTEGER").replace("CHAR2","CHAR"))
                 self.iface.messageBar().pushMessage(
                     "Success", myGBL['DatabaseType'] + " create table called",
                     level=Qgis.Success, duration=10)
@@ -649,7 +647,6 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
         ora2Long = 0
         sqlStr = ""
         insStr = ""
-#create schema test123 AUTHORIZATION rogermsu;
 
         if DatabaseType == "PGS":
             sqlStr = "create schema if not exists " + myGBL['PG_Schema'] + " AUTHORIZATION " + myGBL['PG_Username'] + ";" + '\n'
@@ -722,6 +719,8 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
                     sqlStr = sqlStr + lc_FldNm + " NUMBER(38)," + chr(141)
                 elif DatabaseType == "MSS":
                     sqlStr = sqlStr + lc_FldNm + " smallint," + '\n'
+            elif field.typeName() == "Boolean":
+                sqlStr = sqlStr + lc_FldNm + " boolean," + '\n'
             elif field.typeName() == "String":
                 if DatabaseType == "PGS": #  + 10 as I have found GPKG strings longer than the field.length
                     sqlStr = sqlStr + lc_FldNm + " varchar(" + str(field.length() + 10) + ")," + '\n'
@@ -799,15 +798,11 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
             ncount = ncount + 1
             if ncount <= 2000:
                 geom = f.geometry()
-
                 geom.transform(ct)
-                # myGBL['tableSRID'].replace("EPSG:","")
 
                 geoStr = "NULL"
                 if DatabaseType == "ORA" or DatabaseType == "ORD":
                     geoStr = "NULL," + str(ncount)
-                # print (geom.asWkb())
-                # geomTyp = geom.wkbType()
                 didBind = False
                 if (DatabaseType == "ORA" or DatabaseType == "ORD") and len(geom.asWkt()) > 4000:
                     # too long for Oracle's varchar2 client side (4000 chars) so use server side binding (327?? chars)
@@ -846,6 +841,8 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
                             updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
                         elif field.typeName() == "Integer16":
                             updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
+                        elif field.typeName() == "Boolean":
+                            updStr = updStr + lc_FldNm + "=" + str(f[field.name()]) + ","
                         elif field.typeName() == "String":
                             # specChar = "( ) - & @ * $ | % "
                             oraStr = str(f[field.name()]).replace("'","''").replace(chr(34),chr(134))
@@ -861,6 +858,8 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
                             oraStr = oraStr.replace("%",chr(135) + "%" + chr(135))
                             oraStr = oraStr.replace(chr(135),"'||'")
                             oraStr = oraStr.replace(chr(134),"'||'" + chr(34) + "'||'")
+                            if len(oraStr) > field.length():
+                                oraStr = oraStr[0: field.length()]
                             updStr = updStr + lc_FldNm + "='" + oraStr + "',"
                         elif field.typeName() == "Date":
                             DATETIME_FORMAT = 'yyyy-MM-dd'
@@ -937,9 +936,14 @@ def import_raw_theme(self, aLayer: QgsVectorLayer, **myGBL):
                                 oraStr = oraStr.replace("%",chr(135) + "%" + chr(135))
                                 oraStr = oraStr.replace(chr(135),"'||'")
                                 oraStr = oraStr.replace(chr(134),"'||'" + chr(34) + "'||'")
+                                if len(oraStr) > field.length():
+                                    oraStr = oraStr[0: field.length()]
                                 valStr = valStr + "'" + oraStr + "',"
-                            else:                          
-                                valStr = valStr + "'" + str(f[field.name()]).replace("'","''") + "',"
+                            else:
+                                curStr = str(f[field.name()]).replace("'","''")
+                                if len(curStr) > field.length():
+                                    curStr = curStr[0: field.length()]
+                                valStr = valStr + "'" + curStr + "',"
                         elif field.typeName() == "Date":
                             # valStr = valStr + "'" + format_date(f[field.name()],DATETIME_FORMAT) + "',"
                             DATETIME_FORMAT = 'yyyy-MM-dd'
